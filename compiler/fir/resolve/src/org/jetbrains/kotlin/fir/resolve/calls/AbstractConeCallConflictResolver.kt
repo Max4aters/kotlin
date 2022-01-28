@@ -161,7 +161,7 @@ abstract class AbstractConeCallConflictResolver(
         function: FirFunction
     ): List<ConeKotlinType> {
         return listOfNotNull(function.receiverTypeRef?.coneType) +
-                (call.resultingTypeForCallableReference?.typeArguments?.map { it as ConeKotlinType }
+                (call.resultingTypeForCallableReference?.typeArguments?.filter { it !is ConeTypeVariableType }?.map { it as ConeKotlinType }
                     ?: call.argumentMapping?.map { it.value.argumentType() }.orEmpty())
     }
 
