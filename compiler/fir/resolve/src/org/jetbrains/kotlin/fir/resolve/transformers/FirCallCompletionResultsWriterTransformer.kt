@@ -698,7 +698,8 @@ class FirCallCompletionResultsWriterTransformer(
             return returnExpression
         }
 
-        return super.transformReturnExpression(returnExpression, data)
+        val newData = labeledElement.returnTypeRef.coneTypeSafe<ConeKotlinType>()?.toExpectedType() ?: data
+        return super.transformReturnExpression(returnExpression, newData)
     }
 
     override fun transformBlock(block: FirBlock, data: ExpectedArgumentType?): FirStatement {
