@@ -31,7 +31,7 @@ import org.jetbrains.kotlin.fir.resolve.calls.FirNamedReferenceWithCandidate
 import org.jetbrains.kotlin.fir.resolve.calls.FirPropertyWithExplicitBackingFieldResolvedNamedReference
 import org.jetbrains.kotlin.fir.resolve.calls.ImplicitDispatchReceiverValue
 import org.jetbrains.kotlin.fir.resolve.dfa.PropertyStability
-import org.jetbrains.kotlin.fir.resolve.diagnostics.ConeUnresolvedNameError
+import org.jetbrains.kotlin.fir.resolve.diagnostics.*
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.transformers.body.resolve.resultType
 import org.jetbrains.kotlin.fir.scopes.impl.delegatedWrapperData
@@ -47,6 +47,7 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.resolve.ForbiddenNamedArgumentsTarget
+import org.jetbrains.kotlin.resolve.calls.tower.CandidateApplicability
 import org.jetbrains.kotlin.types.SmartcastStability
 import org.jetbrains.kotlin.utils.addToStdlib.safeAs
 
@@ -493,3 +494,16 @@ fun FirFunction.getAsForbiddenNamedArgumentsTarget(session: FirSession): Forbidd
 //  org.jetbrains.kotlin.fir.serialization.FirElementSerializer.functionProto
 //  org.jetbrains.kotlin.fir.serialization.FirElementSerializer.constructorProto
 fun FirFunction.getHasStableParameterNames(session: FirSession): Boolean = getAsForbiddenNamedArgumentsTarget(session) == null
+
+fun createConeDiagnosticForCandidateWithError(
+    applicability: CandidateApplicability,
+    candidate: Candidate
+): ConeDiagnostic {
+    return when (applicability) {
+        CandidateApplicability.HIDDEN -> ConeHiddenCandidateError(candidate)
+        CandidateApplicability.VISIBILITY_ERROR -> ConeVisibilityError(candidate.symbol)
+        CandidateApplicability.INAPPLICABLE_WRONG_RECEIVER -> ConeInapplicableWrongReceiver(listOf(candidate))
+        CandidateApplicability.NO_COMPANION_OBJECT -> ConeNoCompanionObject(candidate)
+        else -> ConeInapplicableCandidateError(applicability, candidate)
+    }
+}
