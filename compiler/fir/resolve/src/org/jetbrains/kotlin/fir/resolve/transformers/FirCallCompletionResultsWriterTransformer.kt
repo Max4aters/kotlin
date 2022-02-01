@@ -33,9 +33,9 @@ import org.jetbrains.kotlin.fir.resolve.diagnostics.ConeConstraintSystemHasContr
 import org.jetbrains.kotlin.fir.resolve.diagnostics.ConeInapplicableCandidateError
 import org.jetbrains.kotlin.fir.resolve.diagnostics.ConePropertyAsOperator
 import org.jetbrains.kotlin.fir.resolve.diagnostics.ConeTypeParameterInQualifiedAccess
-import org.jetbrains.kotlin.fir.resolve.inference.*
+import org.jetbrains.kotlin.fir.resolve.inference.ResolvedLambdaAtom
 import org.jetbrains.kotlin.fir.resolve.propagateTypeFromQualifiedAccessAfterNullCheck
-import org.jetbrains.kotlin.fir.resolve.providers.firProvider
+import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.substitution.ConeSubstitutor
 import org.jetbrains.kotlin.fir.resolve.transformers.body.resolve.FirArrayOfCallTransformer
 import org.jetbrains.kotlin.fir.resolve.transformers.body.resolve.remapArgumentsWithVararg
@@ -580,10 +580,9 @@ class FirCallCompletionResultsWriterTransformer(
                 expectedArgumentType.isBuiltinFunctionalType(session) -> expectedArgumentType
                 // fun interface (a.k.a. SAM), then unwrap it and build a functional type from that interface function
                 expectedArgumentType is ConeClassLikeType -> {
-                    val sam =
-                        (session.firProvider.getFirClassifierByFqName(expectedArgumentType.lookupTag.classId) as? FirClass)
-                            ?.takeIf { it.classKind == ClassKind.INTERFACE }
-                            ?.declarations?.singleOrNull() as? FirSimpleFunction
+                    val sam = (session.symbolProvider.getClassLikeSymbolByClassId(expectedArgumentType.lookupTag.classId)?.fir as? FirClass)
+                        ?.takeIf { it.origin != FirDeclarationOrigin.Java && it.classKind == ClassKind.INTERFACE }
+                        ?.declarations?.singleOrNull() as? FirSimpleFunction
                     sam?.let {
                         createFunctionalType(
                             sam.valueParameters.map { it.returnTypeRef.coneType }, null, sam.returnTypeRef.coneType, sam.isSuspend
