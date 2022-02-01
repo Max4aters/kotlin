@@ -100,6 +100,12 @@ private class ClassLoweringVisitor(
         declaration.acceptChildrenVoid(this)
         loweringPass.lower(declaration)
     }
+
+    override fun visitSimpleFunction(declaration: IrSimpleFunction) {
+        // Fake override function can't have default parameter values and/or body, and thus can't have local classes
+        if (declaration.isFakeOverride) return
+        declaration.acceptChildrenVoid(this)
+    }
 }
 
 fun ScriptLoweringPass.runOnFilePostfix(irFile: IrFile) {
@@ -181,6 +187,12 @@ private open class BodyLoweringVisitor(
         declaration.thisReceiver?.accept(this, declaration)
         declaration.typeParameters.forEach { it.accept(this, declaration) }
         ArrayList(declaration.declarations).forEach { it.accept(this, declaration) }
+    }
+
+    override fun visitSimpleFunction(declaration: IrSimpleFunction, data: IrDeclaration?) {
+        // Fake override function can't have default parameter values and/or body
+        if (declaration.isFakeOverride) return
+        declaration.acceptChildren(this, declaration)
     }
 
     override fun visitBody(body: IrBody, data: IrDeclaration?) {
