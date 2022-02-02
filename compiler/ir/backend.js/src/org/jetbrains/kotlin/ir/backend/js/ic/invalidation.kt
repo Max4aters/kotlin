@@ -40,7 +40,9 @@ import java.security.MessageDigest
 import org.jetbrains.kotlin.backend.common.serialization.proto.IrFile as ProtoFile
 
 private fun KotlinLibrary.fingerprint(fileIndex: Int): Hash {
-    return ((((types(fileIndex).md5() * 31) + signatures(fileIndex).md5()) * 31 + strings(fileIndex).md5()) * 31 + declarations(fileIndex).md5()) * 31 + bodies(fileIndex).md5()
+    return ((((types(fileIndex).md5() * 31) + signatures(fileIndex).md5()) * 31 + strings(fileIndex).md5()) * 31 + declarations(fileIndex).md5()) * 31 + bodies(
+        fileIndex
+    ).md5()
 }
 
 private fun invalidateCacheForModule(
@@ -413,7 +415,7 @@ fun actualizeCaches(
     compilerConfiguration: CompilerConfiguration,
     dependencies: Collection<ModulePath>,
     icCachePaths: Collection<String>,
-    irFactory: IrFactory,
+    irFactory: () -> IrFactory,
     mainArguments: List<String>?,
     executor: CacheExecutor,
     callback: (CacheUpdateStatus) -> Unit
@@ -448,7 +450,7 @@ fun actualizeCaches(
             libraries = libraries,
             dependencyGraph = dependencyGraph,
             icCacheMap = icCacheMap,
-            irFactory = irFactory,
+            irFactory = irFactory(),
             mainArguments = mainArguments,
             executor = executor
         )
