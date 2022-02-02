@@ -11,8 +11,8 @@ import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.tasks.*
 import org.jetbrains.kotlin.gradle.plugin.tasks.KonanCompileProgramTask
-import org.jetbrains.kotlin.konan.target.AppleConfigurables
 import org.jetbrains.kotlin.gradle.plugin.tasks.KonanCompileTask
+import org.jetbrains.kotlin.konan.target.*
 import java.io.File
 import java.nio.file.Path
 import java.nio.file.Files
@@ -21,15 +21,6 @@ import java.nio.file.Files
  * Gradle task that wraps FileCheck LLVM utility.
  */
 open class FileCheckTest : DefaultTask() {
-
-    private val target = project.testTarget
-    private val platform = project.platformManager.platform(target)
-    private val configurables = platform.configurables
-
-    private val llvmBin = "${configurables.absoluteLlvmHome}/bin"
-
-    private val fileCheck = "$llvmBin/FileCheck"
-
     /**
      * File annotated with FileCheck directives.
      */
@@ -74,6 +65,22 @@ open class FileCheckTest : DefaultTask() {
     @Input
     var generateFramework: Boolean = false
 
+    @Optional
+    @Input
+    var targetName: String = project.testTarget.name
+
+    @get:Internal
+    val target: KonanTarget
+        get() = project.platformManager.targetByName(targetName)
+
+    override fun configure(closure: Closure<*>): Task {
+        super.configure(closure)
+        if (target != HostManager.host) {
+            dependsOnCrossDist(target)
+        }
+        return this
+    }
+
     /**
      * Check that [inputFile] matches [annotatedFile] with FileCheck.
      */
@@ -82,6 +89,10 @@ open class FileCheckTest : DefaultTask() {
         checkPrefix?.let {
             args.addAll(listOf("--check-prefix", it))
         }
+        val platform = project.platformManager.platform(target)
+        val configurables = platform.configurables
+        val llvmBin = "${configurables.absoluteLlvmHome}/bin"
+        val fileCheck = "$llvmBin/FileCheck"
         return runProcess(localExecutor(project), fileCheck, *args.toTypedArray())
                 .ensureSuccessful(fileCheck, *args.toTypedArray())
     }
