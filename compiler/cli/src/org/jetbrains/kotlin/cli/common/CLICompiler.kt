@@ -121,10 +121,16 @@ abstract class CLICompiler<A : CommonCompilerArguments> : CLITool<A>() {
             return COMPILATION_ERROR
         } catch (t: Throwable) {
             MessageCollectorUtil.reportException(collector, t)
-            return if (t is OutOfMemoryError) OOM_ERROR else INTERNAL_ERROR
+            return if (t is OutOfMemoryError || t.hasOOMCause()) OOM_ERROR else INTERNAL_ERROR
         } finally {
             collector.flush()
         }
+    }
+
+    private fun Throwable.hasOOMCause(): Boolean = when (cause) {
+        null -> false
+        is OutOfMemoryError -> true
+        else -> cause!!.hasOOMCause()
     }
 
     private fun MessageCollector.reportCompilationCancelled(e: CompilationCanceledException) {
