@@ -9,3 +9,12 @@ fun test(b: Boolean, f: () -> String?): () -> String {
     }
     return { "2" }
 }
+
+fun test2(b: Boolean, f: () -> String?) = run { // implicit return type
+    val foo = try {
+        f
+    } catch (e: Exception) {
+        return { "1" }
+    }
+    { "2" }
+}

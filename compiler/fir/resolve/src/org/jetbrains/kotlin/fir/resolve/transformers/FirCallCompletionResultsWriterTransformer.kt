@@ -697,7 +697,7 @@ class FirCallCompletionResultsWriterTransformer(
             return returnExpression
         }
 
-        val newData = labeledElement.returnTypeRef.coneTypeSafe<ConeKotlinType>()?.toExpectedType() ?: data
+        val newData = labeledElement.returnTypeRef.coneTypeSafe<ConeKotlinType>()?.toExpectedType()
         return super.transformReturnExpression(returnExpression, newData)
     }
 
