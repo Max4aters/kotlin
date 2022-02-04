@@ -107,14 +107,15 @@ private class ClassLoweringVisitor(
     }
 
     override fun visitClass(declaration: IrClass) {
-        declaration.acceptChildrenVoid(this)
+        declaration.declarations.forEach { it.acceptVoid(this) }
         loweringPass.lower(declaration)
     }
 
     override fun visitSimpleFunction(declaration: IrSimpleFunction) {
         // Fake override function can't have default parameter values and/or body, and thus can't have local classes
         if (declaration.isFakeOverride) return
-        declaration.acceptChildrenVoid(this)
+        declaration.valueParameters.forEach { it.defaultValue?.acceptChildrenVoid(this) }
+        declaration.body?.acceptChildrenVoid(this)
     }
 }
 
