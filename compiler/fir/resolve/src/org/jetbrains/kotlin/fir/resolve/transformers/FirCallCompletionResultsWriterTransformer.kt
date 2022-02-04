@@ -23,29 +23,27 @@ import org.jetbrains.kotlin.fir.references.FirNamedReference
 import org.jetbrains.kotlin.fir.references.builder.buildErrorNamedReference
 import org.jetbrains.kotlin.fir.references.builder.buildResolvedCallableReference
 import org.jetbrains.kotlin.fir.references.builder.buildResolvedNamedReference
+import org.jetbrains.kotlin.fir.resolve.*
 import org.jetbrains.kotlin.fir.resolve.calls.Candidate
 import org.jetbrains.kotlin.fir.resolve.calls.FirErrorReferenceWithCandidate
 import org.jetbrains.kotlin.fir.resolve.calls.FirNamedReferenceWithCandidate
-import org.jetbrains.kotlin.fir.resolve.constructFunctionalTypeRef
-import org.jetbrains.kotlin.fir.resolve.createFunctionalType
 import org.jetbrains.kotlin.fir.resolve.dfa.FirDataFlowAnalyzer
 import org.jetbrains.kotlin.fir.resolve.diagnostics.ConeConstraintSystemHasContradiction
 import org.jetbrains.kotlin.fir.resolve.diagnostics.ConeInapplicableCandidateError
 import org.jetbrains.kotlin.fir.resolve.diagnostics.ConePropertyAsOperator
 import org.jetbrains.kotlin.fir.resolve.diagnostics.ConeTypeParameterInQualifiedAccess
 import org.jetbrains.kotlin.fir.resolve.inference.ResolvedLambdaAtom
-import org.jetbrains.kotlin.fir.resolve.propagateTypeFromQualifiedAccessAfterNullCheck
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.substitution.ConeSubstitutor
 import org.jetbrains.kotlin.fir.resolve.transformers.body.resolve.FirArrayOfCallTransformer
 import org.jetbrains.kotlin.fir.resolve.transformers.body.resolve.remapArgumentsWithVararg
 import org.jetbrains.kotlin.fir.resolve.transformers.body.resolve.resultType
 import org.jetbrains.kotlin.fir.resolve.transformers.body.resolve.writeResultType
+import org.jetbrains.kotlin.fir.scopes.getFunctions
 import org.jetbrains.kotlin.fir.scopes.impl.FirIntegerOperatorCall
+import org.jetbrains.kotlin.fir.scopes.unsubstitutedScope
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
+import org.jetbrains.kotlin.fir.symbols.impl.*
 import org.jetbrains.kotlin.fir.types.*
 import org.jetbrains.kotlin.fir.types.builder.buildErrorTypeRef
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
@@ -580,12 +578,20 @@ class FirCallCompletionResultsWriterTransformer(
                 expectedArgumentType.isBuiltinFunctionalType(session) -> expectedArgumentType
                 // fun interface (a.k.a. SAM), then unwrap it and build a functional type from that interface function
                 expectedArgumentType is ConeClassLikeType -> {
-                    val sam = (session.symbolProvider.getClassLikeSymbolByClassId(expectedArgumentType.lookupTag.classId)?.fir as? FirClass)
-                        ?.takeIf { it.origin != FirDeclarationOrigin.Java && it.classKind == ClassKind.INTERFACE }
+                    val classSymbol =
+                        session.symbolProvider.getClassLikeSymbolByClassId(expectedArgumentType.lookupTag.classId) as? FirClassSymbol
+                    val sam = (classSymbol?.fir as? FirClass)
+                        ?.takeIf { it.classKind == ClassKind.INTERFACE }
                         ?.declarations?.singleOrNull() as? FirSimpleFunction
+
                     sam?.let {
+                        val scope = classSymbol.unsubstitutedScope(session, ScopeSession(), false)
+                        val resolvedSam = scope.getFunctions(sam.name).single()
                         createFunctionalType(
-                            sam.valueParameters.map { it.returnTypeRef.coneType }, null, sam.returnTypeRef.coneType, sam.isSuspend
+                            resolvedSam.valueParameterSymbols.map { it.resolvedReturnType.type },
+                            null,
+                            resolvedSam.resolvedReturnType.type,
+                            sam.isSuspend
                         )
                     }
                 }
