@@ -501,10 +501,7 @@ allprojects {
 
             //TODO these modules should be properly migrated
             if (!project.path.contains("-gradle") &&
-                !project.path.startsWith(":binary-compatibility-validator") &&
-                //Blocker in IDEA build
-                !project.path.startsWith(":compiler:frontend.common") &&
-                !project.path.startsWith(":compiler:frontend") &&
+                !project.path.contains(":binary-compatibility-validator") &&
                 //HACK: filter modules with JVM target 1.6
                 //TODO: remove after removing 1.6 target
                 !project.path.startsWith(":core") &&
@@ -512,7 +509,7 @@ allprojects {
                 !project.path.startsWith(":kotlin-stdlib") &&
                 !project.path.startsWith(":kotlinx-metadata") &&
                 !project.path.startsWith(":kotlin-scripting") &&
-                !project.path.startsWith(":compiler:tests-common-jvm6")
+                !project.path.startsWith(":compiler:tests-common-jvm6") &&
             ) {
                 freeCompilerArgs += "-Xjvm-default=all"
             }
