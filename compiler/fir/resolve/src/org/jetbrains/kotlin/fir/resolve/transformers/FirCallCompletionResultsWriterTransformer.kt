@@ -6,14 +6,13 @@
 package org.jetbrains.kotlin.fir.resolve.transformers
 
 import org.jetbrains.kotlin.KtFakeSourceElementKind
-import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.builtins.functions.FunctionClassKind
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.fakeElement
 import org.jetbrains.kotlin.fir.*
 import org.jetbrains.kotlin.fir.declarations.*
 import org.jetbrains.kotlin.fir.declarations.utils.isInline
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
-import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.diagnostics.ConeSimpleDiagnostic
 import org.jetbrains.kotlin.fir.diagnostics.DiagnosticKind
@@ -74,6 +73,8 @@ class FirCallCompletionResultsWriterTransformer(
 
     private val arrayOfCallTransformer = FirArrayOfCallTransformer()
     private var enableArrayOfCallTransformation = false
+
+    private val samResolver: FirSamResolver = FirSamResolverImpl(session, ScopeSession())
 
     enum class Mode {
         Normal, DelegatedPropertyCompletion
@@ -580,19 +581,16 @@ class FirCallCompletionResultsWriterTransformer(
                 expectedArgumentType is ConeClassLikeType -> {
                     val firRegularClass =
                         session.symbolProvider.getClassLikeSymbolByClassId(expectedArgumentType.lookupTag.classId)?.fir as? FirRegularClass
-                    val sam = firRegularClass
-                        ?.takeIf { it.classKind == ClassKind.INTERFACE }
-                        ?.declarations?.singleOrNull() as? FirSimpleFunction
 
-                    sam?.let {
-                        val samResolver = FirSamResolverImpl(session, ScopeSession())
-                        val samConstructor = samResolver.getSamConstructor(firRegularClass)
-                        if (samConstructor != null) {
+                    firRegularClass?.let {
+                        val functionType = samResolver.getFunctionTypeForPossibleSamType(firRegularClass.defaultType())
+                        if (functionType != null) {
                             createFunctionalType(
-                                samConstructor.valueParameters.map { it.returnTypeRef.coneType },
+                                functionType.typeArguments.dropLast(1).map { it as ConeKotlinType },
                                 null,
-                                samConstructor.returnTypeRef.coneType,
-                                sam.isSuspend
+                                functionType.typeArguments.last() as ConeKotlinType,
+                                functionType.classId?.relativeClassName?.asString()
+                                    ?.startsWith(FunctionClassKind.SuspendFunction.classNamePrefix) == true
                             )
                         } else {
                             null
