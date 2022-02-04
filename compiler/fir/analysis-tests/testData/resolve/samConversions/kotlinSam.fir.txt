@@ -33,7 +33,7 @@ FILE: kotlinSam.kt
             ^ CMP(>, R|<local>/t|.R|kotlin/Int.compareTo|(Int(1)))
         }
 
-        R|/foo1|(<L> = foo1@fun <anonymous>(x: R|kotlin/Int|): R|kotlin/Boolean| <inline=NoInline>  {
+        R|/foo1|(<L> = foo1@fun <anonymous>(x: R|kotlin/Int|): R|MyRunnable| <inline=NoInline>  {
             ^ CMP(>, R|<local>/x|.R|kotlin/Int.compareTo|(Int(1)))
         }
         )
@@ -48,7 +48,7 @@ FILE: kotlinSam.kt
         }
         )
         <Inapplicable(INAPPLICABLE): /foo3>#(R|<local>/f|)
-        R|/foo4|(<L> = foo4@fun <anonymous>(x: R|kotlin/Int|): R|kotlin/Boolean| <inline=NoInline>  {
+        R|/foo4|(<L> = foo4@fun <anonymous>(x: R|kotlin/Int|): R|Derived| <inline=NoInline>  {
             ^ CMP(>, R|<local>/x|.R|kotlin/Int.compareTo|(Int(1)))
         }
         )

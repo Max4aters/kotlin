@@ -39,11 +39,11 @@ import org.jetbrains.kotlin.fir.resolve.transformers.body.resolve.FirArrayOfCall
 import org.jetbrains.kotlin.fir.resolve.transformers.body.resolve.remapArgumentsWithVararg
 import org.jetbrains.kotlin.fir.resolve.transformers.body.resolve.resultType
 import org.jetbrains.kotlin.fir.resolve.transformers.body.resolve.writeResultType
-import org.jetbrains.kotlin.fir.scopes.getFunctions
 import org.jetbrains.kotlin.fir.scopes.impl.FirIntegerOperatorCall
-import org.jetbrains.kotlin.fir.scopes.unsubstitutedScope
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.*
+import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.types.*
 import org.jetbrains.kotlin.fir.types.builder.buildErrorTypeRef
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
@@ -578,21 +578,25 @@ class FirCallCompletionResultsWriterTransformer(
                 expectedArgumentType.isBuiltinFunctionalType(session) -> expectedArgumentType
                 // fun interface (a.k.a. SAM), then unwrap it and build a functional type from that interface function
                 expectedArgumentType is ConeClassLikeType -> {
-                    val classSymbol =
-                        session.symbolProvider.getClassLikeSymbolByClassId(expectedArgumentType.lookupTag.classId) as? FirClassSymbol
-                    val sam = (classSymbol?.fir as? FirClass)
+                    val firRegularClass =
+                        session.symbolProvider.getClassLikeSymbolByClassId(expectedArgumentType.lookupTag.classId)?.fir as? FirRegularClass
+                    val sam = firRegularClass
                         ?.takeIf { it.classKind == ClassKind.INTERFACE }
                         ?.declarations?.singleOrNull() as? FirSimpleFunction
 
                     sam?.let {
-                        val scope = classSymbol.unsubstitutedScope(session, ScopeSession(), false)
-                        val resolvedSam = scope.getFunctions(sam.name).single()
-                        createFunctionalType(
-                            resolvedSam.valueParameterSymbols.map { it.resolvedReturnType.type },
-                            null,
-                            resolvedSam.resolvedReturnType.type,
-                            sam.isSuspend
-                        )
+                        val samResolver = FirSamResolverImpl(session, ScopeSession())
+                        val samConstructor = samResolver.getSamConstructor(firRegularClass)
+                        if (samConstructor != null) {
+                            createFunctionalType(
+                                samConstructor.valueParameters.map { it.returnTypeRef.coneType },
+                                null,
+                                samConstructor.returnTypeRef.coneType,
+                                sam.isSuspend
+                            )
+                        } else {
+                            null
+                        }
                     }
                 }
                 else -> null
